@@ -232,7 +232,7 @@ bool IsExistentialGuard() {
 }
 
 bool IsLoopSpec() {
-  return la.kind == _invariant || la.kind == _decreases || la.kind == _modifies;
+  return la.kind == _invariant || la.kind == _decreases || la.kind == _modifies || la.kind == _requires || la.kind == _ensures;
 }
 
 bool IsWitness() {
@@ -2485,6 +2485,8 @@ WhileStmt<out Statement stmt>
      Attributes decAttrs = null;
      Attributes modAttrs = null;
      List<FrameExpression> mod = null;
+     List<MaybeFreeExpression> req = new List<MaybeFreeExpression>();
+	 List<MaybeFreeExpression> ens = new List<MaybeFreeExpression>();
 
      BlockStmt body = null;  IToken bodyEllipsis = null;
      IToken bodyStart = null, bodyEnd = null, endTok = Token.NoToken;
@@ -2496,14 +2498,14 @@ WhileStmt<out Statement stmt>
   "while"                    (. x = t; .)
   (
     IF(IsLoopSpec() || IsAlternative())
-    { LoopSpec<invariants, decreases, ref mod, ref decAttrs, ref modAttrs> }
+    { LoopSpec<invariants, decreases, ref mod, ref decAttrs, ref modAttrs, req, ens> }
     AlternativeBlock<false, out alternatives, out usesOptionalBraces, out endTok>
     (. stmt = new AlternativeLoopStmt(x, endTok, invariants, new Specification<Expression>(decreases, decAttrs), new Specification<FrameExpression>(mod, modAttrs), alternatives, usesOptionalBraces); .)
   |
     ( Guard<out guard>           (. Contract.Assume(guard == null || cce.Owner.None(guard)); .)
     | "..."                      (. guardEllipsis = t; .)
     )
-    { LoopSpec<invariants, decreases, ref mod, ref decAttrs, ref modAttrs> }
+    { LoopSpec<invariants, decreases, ref mod, ref decAttrs, ref modAttrs, req, ens> }
     ( IF(la.kind == _lbrace)      /* if there's an open brace, claim it as the beginning of the loop body (as opposed to a BlockStmt following the loop) */
       BlockStmt<out body, out bodyStart, out bodyEnd>  (. endTok = body.EndTok; isDirtyLoop = false; .)
     | IF(la.kind == _ellipsis)    /* if there's an ellipsis, claim it as standing for the loop body (as opposed to a "...;" statement following the loop) */
@@ -2518,21 +2520,24 @@ WhileStmt<out Statement stmt>
         if (body == null && !isDirtyLoop) {
           body = new BlockStmt(x, endTok, new List<Statement>());
         }
-        stmt = new WhileStmt(x, endTok, guard, invariants, new Specification<Expression>(decreases, decAttrs), new Specification<FrameExpression>(null, null), body);
+        stmt = new WhileStmt(x, endTok, guard, invariants, new Specification<Expression>(decreases, decAttrs), new Specification<FrameExpression>(null, null), body, req, ens);
         stmt = new SkeletonStatement(stmt, guardEllipsis, bodyEllipsis);
       } else {
         // The following statement protects against crashes in case of parsing errors
         if (body == null && !isDirtyLoop) {
           body = new BlockStmt(x, endTok, new List<Statement>());
         }
-        stmt = new WhileStmt(x, endTok, guard, invariants, new Specification<Expression>(decreases, decAttrs), new Specification<FrameExpression>(mod, modAttrs), body);
+        stmt = new WhileStmt(x, endTok, guard, invariants, new Specification<Expression>(decreases, decAttrs), new Specification<FrameExpression>(mod, modAttrs), body, req, ens);
       }
     .)
   )
   .
-LoopSpec<.List<MaybeFreeExpression> invariants, List<Expression> decreases, ref List<FrameExpression> mod, ref Attributes decAttrs, ref Attributes modAttrs.>
+LoopSpec<.List<MaybeFreeExpression> invariants, List<Expression> decreases, ref List<FrameExpression> mod, ref Attributes decAttrs, ref Attributes modAttrs, List<MaybeFreeExpression> req, List<MaybeFreeExpression> ens.>
 = (. Expression e; FrameExpression fe;
      bool isFree = false; Attributes attrs = null;
+     Attributes reqAttrs = null;
+     Attributes ensAttrs = null;
+     IToken lbl = null;
   .)
   ( SYNC
     [ "free"                                      (. isFree = true; errors.Deprecated(t, "the 'free' keyword is soon to be deprecated"); .)
@@ -2550,6 +2555,19 @@ LoopSpec<.List<MaybeFreeExpression> invariants, List<Expression> decreases, ref 
     FrameExpression<out fe, false, true>          (. mod.Add(fe); .)
     { "," FrameExpression<out fe, false, true>    (. mod.Add(fe); .)
     }
+    OldSemi
+  | SYNC
+	"requires"
+	{ Attribute<ref reqAttrs> }
+	[ IF(IsLabel(true))
+	  LabelIdent<out lbl> ":"
+	]
+	Expression<out e, false, true>              (. req.Add(new MaybeFreeExpression(e, false, lbl == null ? null : new AssertLabel(lbl, lbl.val), reqAttrs)); .)
+    OldSemi
+  | SYNC
+	"ensures"
+	{ Attribute<ref ensAttrs> }
+	Expression<out e, false, false> OldSemi     (. ens.Add(new MaybeFreeExpression(e, false, ensAttrs)); .)
     OldSemi
   )
   .
@@ -3323,6 +3341,8 @@ ConstAtomExpression<out Expression e, bool allowSemi, bool allowLambda>
   | "old"                                      (. x = t; IToken oldAt = null; .)
     [ "@" LabelIdent<out oldAt> ]
     "(" Expression<out e, true, true> ")"      (. e = new OldExpr(x, e, oldAt?.val); .)
+  | "before"                                   (. x = t; .)
+    "(" Expression<out e, false, true> ")"     (. e = new BeforeExpr(x, e); .)
   | "|"                                        (. x = t; .)
       Expression<out e, true, true, false>     (. e = new UnaryOpExpr(x, UnaryOpExpr.Opcode.Cardinality, e); .)
     "|"

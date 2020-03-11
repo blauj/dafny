@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Diagnostics.Contracts;
@@ -373,6 +373,10 @@ namespace Microsoft.Dafny
         var e = (OldExpr)expr;
         return new OldExpr(Tok(e.tok), CloneExpr(e.E), e.At);
 
+      } else if (expr is BeforeExpr) {
+        var e = (BeforeExpr)expr;
+        return new BeforeExpr(Tok(e.tok), CloneExpr(e.E));
+
       } else if (expr is UnchangedExpr) {
         var e = (UnchangedExpr)expr;
         return new UnchangedExpr(Tok(e.tok), e.Frame.ConvertAll(CloneFrameExpr), e.At);
@@ -606,7 +610,7 @@ namespace Microsoft.Dafny
 
       } else if (stmt is WhileStmt) {
         var s = (WhileStmt)stmt;
-        r = new WhileStmt(Tok(s.Tok), Tok(s.EndTok), CloneExpr(s.Guard), s.Invariants.ConvertAll(CloneMayBeFreeExpr), CloneSpecExpr(s.Decreases), CloneSpecFrameExpr(s.Mod), CloneBlockStmt(s.Body));
+        r = r = new WhileStmt(Tok(s.Tok), Tok(s.EndTok), CloneExpr(s.Guard), s.Invariants.ConvertAll(CloneMayBeFreeExpr), CloneSpecExpr(s.Decreases), CloneSpecFrameExpr(s.Mod), CloneBlockStmt(s.Body), s.Requires.ConvertAll(CloneMayBeFreeExpr), s.Ensures.ConvertAll(CloneMayBeFreeExpr));
 
       } else if (stmt is AlternativeLoopStmt) {
         var s = (AlternativeLoopStmt)stmt;

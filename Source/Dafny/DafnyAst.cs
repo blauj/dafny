@@ -1,4 +1,4 @@
-#define TI_DEBUG_PRINT
+﻿#define TI_DEBUG_PRINT
 //-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
@@ -6247,7 +6247,7 @@ namespace Microsoft.Dafny {
       Contract.Requires(expr != null);
       this.Message = message;
     }
-    
+
     public override IEnumerable<Expression> SubExpressions {
       get {
         foreach (var e in base.SubExpressions) { yield return e; }
@@ -7244,6 +7244,8 @@ namespace Microsoft.Dafny {
   {
     public readonly Expression/*?*/ Guard;
     public readonly BlockStmt/*?*/ Body;
+    public readonly List<MaybeFreeExpression> Requires;
+    public readonly List<MaybeFreeExpression> Ensures;
     public LoopBodySurrogate/*?*/ BodySurrogate;  // set by Resolver; remains null unless Body==null
 
     public class LoopBodySurrogate
@@ -7259,12 +7261,16 @@ namespace Microsoft.Dafny {
 
     public WhileStmt(IToken tok, IToken endTok, Expression guard,
                      List<MaybeFreeExpression> invariants, Specification<Expression> decreases, Specification<FrameExpression> mod,
-                     BlockStmt body)
+                     BlockStmt body, List<MaybeFreeExpression> req, List<MaybeFreeExpression> ens)
       : base(tok, endTok, invariants, decreases, mod) {
       Contract.Requires(tok != null);
       Contract.Requires(endTok != null);
+      Contract.Requires(req != null);
+      Contract.Requires(ens != null);
       this.Guard = guard;
       this.Body = body;
+      this.Requires = req;
+      this.Ensures = ens;
     }
 
     public override IEnumerable<Statement> SubStatements {
@@ -7280,6 +7286,14 @@ namespace Microsoft.Dafny {
         if (Guard != null) {
           yield return Guard;
         }
+        foreach (var ens in Ensures) {
+          foreach (var e in Attributes.SubExpressions(ens.Attributes)) { yield return e; }
+          yield return ens.E;
+        }
+        foreach (var req in Requires) {
+          foreach (var e in Attributes.SubExpressions(req.Attributes)) { yield return e; }
+          yield return req.E;
+        }
       }
     }
   }
@@ -7292,8 +7306,8 @@ namespace Microsoft.Dafny {
   {
     public RefinedWhileStmt(IToken tok, IToken endTok, Expression guard,
                             List<MaybeFreeExpression> invariants, Specification<Expression> decreases, Specification<FrameExpression> mod,
-                            BlockStmt body)
-      : base(tok, endTok, guard, invariants, decreases, mod, body) {
+                            BlockStmt body, List<MaybeFreeExpression> req, List<MaybeFreeExpression> ens)
+      : base(tok, endTok, guard, invariants, decreases, mod, body, req, ens) {
       Contract.Requires(tok != null);
       Contract.Requires(endTok != null);
       Contract.Requires(body != null);
@@ -9340,7 +9354,27 @@ namespace Microsoft.Dafny {
       get { yield return E; }
     }
   }
+  public class BeforeExpr : Expression {
+    [Peer]
+    public readonly Expression E;
+    [ContractInvariantMethod]
+    void ObjectInvariant() {
+      Contract.Invariant(E != null);
+    }
 
+    [Captured]
+    public BeforeExpr(IToken tok, Expression expr)
+      : base(tok) {
+      Contract.Requires(tok != null);
+      Contract.Requires(expr != null);
+      cce.Owner.AssignSame(this, expr);
+      E = expr;
+    }
+
+    public override IEnumerable<Expression> SubExpressions {
+      get { yield return E; }
+    }
+  }
   public class UnchangedExpr : Expression
   {
     public readonly List<FrameExpression> Frame;

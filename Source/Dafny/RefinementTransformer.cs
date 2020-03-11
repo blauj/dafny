@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -1427,8 +1427,10 @@ namespace Microsoft.Dafny
       }
 
       var invs = cOld.Invariants.ConvertAll(refinementCloner.CloneMayBeFreeExpr);
+      var reqs = cOld.Requires.ConvertAll(refinementCloner.CloneMayBeFreeExpr);
+      var ens = cOld.Ensures.ConvertAll(refinementCloner.CloneMayBeFreeExpr);
       invs.AddRange(cNew.Invariants);
-      var r = new RefinedWhileStmt(cNew.Tok, cNew.EndTok, guard, invs, decr, refinementCloner.CloneSpecFrameExpr(cOld.Mod), MergeBlockStmt(cNew.Body, cOld.Body));
+      var r = new RefinedWhileStmt(cNew.Tok, cNew.EndTok, guard, invs, decr, refinementCloner.CloneSpecFrameExpr(cOld.Mod), MergeBlockStmt(cNew.Body, cOld.Body), reqs, ens);
       return r;
     }
 

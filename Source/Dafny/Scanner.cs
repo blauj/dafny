@@ -217,8 +217,8 @@ public class UTF8Buffer: Buffer {
 public class Scanner {
   const char EOL = '\n';
   const int eofSym = 0; /* pdt */
-	const int maxT = 158;
-	const int noSym = 158;
+	const int maxT = 159;
+	const int noSym = 159;
 
 
   [ContractInvariantMethod]
@@ -610,6 +610,7 @@ public class Scanner {
 			case "allocated": t.kind = 153; break;
 			case "unchanged": t.kind = 154; break;
 			case "old": t.kind = 156; break;
+			case "before": t.kind = 157; break;
 			default: break;
 		}
   }
@@ -1029,9 +1030,9 @@ public class Scanner {
 				if (ch == '&') {AddCh(); goto case 96;}
 				else {t.kind = 146; break;}
 			case 116:
-				recEnd = pos; recKind = 157;
+				recEnd = pos; recKind = 158;
 				if (ch == '.') {AddCh(); goto case 54;}
-				else {t.kind = 157; break;}
+				else {t.kind = 158; break;}
 			case 117:
 				recEnd = pos; recKind = 83;
 				if (ch == '>') {AddCh(); goto case 93;}

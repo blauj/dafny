@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------
+﻿//-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
 //
@@ -1573,8 +1573,16 @@ namespace Microsoft.Dafny {
         wr.WriteLine();
       }
 
-      PrintSpec("invariant", s.Invariants, indent + IndentAmount, s.Body != null || omitBody || (s.Decreases.Expressions != null && s.Decreases.Expressions.Count != 0) || (s.Mod.Expressions != null && s.Mod.Expressions.Count != 0));
-      PrintDecreasesSpec(s.Decreases, indent + IndentAmount, s.Body != null || omitBody || (s.Mod.Expressions != null && s.Mod.Expressions.Count != 0));
+      var hasModifies = s.Mod?.Expressions?.Count != 0;
+      var hasInvariants = s.Invariants?.Count != 0;
+      var hasRequires = s.Requires?.Count != 0;
+      var hasEnsures = s.Ensures?.Count != 0;
+      var hasDecreases = s.Decreases?.Expressions?.Count != 0;
+      PrintSpec("requires", s.Requires, indent + IndentAmount, s.Body != null || omitBody || hasInvariants || hasEnsures || hasModifies || hasDecreases);
+      PrintSpec("invariant", s.Invariants, indent + IndentAmount, s.Body != null || omitBody || hasEnsures || hasDecreases || hasModifies);
+      PrintSpec("ensures", s.Ensures, indent + IndentAmount, s.Body != null || omitBody || hasDecreases || hasModifies);
+      PrintDecreasesSpec(s.Decreases, indent + IndentAmount, s.Body != null || omitBody || hasModifies);
+
       if (s.Mod.Expressions != null) {
         PrintFrameSpecLine("modifies", s.Mod.Expressions, indent + IndentAmount, s.Mod.HasAttributes() ? s.Mod.Attributes : null, s.Body != null || omitBody);
       }
@@ -2138,6 +2146,13 @@ namespace Microsoft.Dafny {
         if (e.At != null) {
           wr.Write("@{0}", e.At);
         }
+        wr.Write("(");
+        PrintExpression(e.E, false);
+        wr.Write(")");
+
+      } else if (expr is BeforeExpr) {
+        var e = (BeforeExpr)expr;
+        wr.Write("before");
         wr.Write("(");
         PrintExpression(e.E, false);
         wr.Write(")");

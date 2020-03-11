@@ -1,4 +1,4 @@
-#define TI_DEBUG_PRINT
+﻿#define TI_DEBUG_PRINT
 //-----------------------------------------------------------------------------
 //
 // Copyright (C) Microsoft Corporation.  All Rights Reserved.
@@ -9291,7 +9291,7 @@ namespace Microsoft.Dafny
           ConstrainTypeExprBool(s.Guard, "condition is expected to be of type bool, but is {0}");
         }
 
-        ResolveLoopSpecificationComponents(s.Invariants, s.Decreases, s.Mod, codeContext, fvs, ref usesHeap);
+        ResolveLoopSpecificationComponents(s.Invariants, s.Decreases, s.Mod, s.Requires, s.Ensures, codeContext, fvs, ref usesHeap);
 
         if (s.Body != null) {
           loopStack.Add(s);  // push
@@ -9314,7 +9314,7 @@ namespace Microsoft.Dafny
         var s = (AlternativeLoopStmt)stmt;
         ResolveAlternatives(s.Alternatives, s, codeContext);
         var usesHeapDontCare = false;
-        ResolveLoopSpecificationComponents(s.Invariants, s.Decreases, s.Mod, codeContext, null, ref usesHeapDontCare);
+        ResolveLoopSpecificationComponents(s.Invariants, s.Decreases, s.Mod, null, null, codeContext, null, ref usesHeapDontCare);
 
       } else if (stmt is ForallStmt) {
         var s = (ForallStmt)stmt;
@@ -9508,7 +9508,7 @@ namespace Microsoft.Dafny
       }
     }
 
-    private void ResolveLoopSpecificationComponents(List<MaybeFreeExpression> invariants, Specification<Expression> decreases, Specification<FrameExpression> modifies, ICodeContext codeContext, HashSet<IVariable> fvs, ref bool usesHeap) {
+    private void ResolveLoopSpecificationComponents(List<MaybeFreeExpression> invariants, Specification<Expression> decreases, Specification<FrameExpression> modifies, List<MaybeFreeExpression> requires, List<MaybeFreeExpression> ensures, ICodeContext codeContext, HashSet<IVariable> fvs, ref bool usesHeap) {
       Contract.Requires(invariants != null);
       Contract.Requires(decreases != null);
       Contract.Requires(modifies != null);
@@ -9522,6 +9522,22 @@ namespace Microsoft.Dafny
           Translator.ComputeFreeVariables(inv.E, fvs, ref usesHeap);
         }
         ConstrainTypeExprBool(inv.E, "invariant is expected to be of type bool, but is {0}");
+      }
+      if (requires != null) {
+        foreach (MaybeFreeExpression e in requires) {
+          Expression r = e.E;
+          ResolveExpression(r, new ResolveOpts(codeContext, false));
+          Contract.Assert(r.Type != null);
+          ConstrainTypeExprBool(r, "precondition is expected to be of type bool, but is {0}");
+        }
+      }
+      if (ensures != null) {
+        foreach (MaybeFreeExpression e in ensures) {
+          Expression r = e.E;
+          ResolveExpression(r, new ResolveOpts(codeContext, false));
+          Contract.Assert(r.Type != null);
+          ConstrainTypeExprBool(r, "postcondition is expected to be of type bool, but is {0}");
+        }
       }
 
       ResolveAttributes(decreases.Attributes, null, new ResolveOpts(codeContext, true));
@@ -11971,6 +11987,11 @@ namespace Microsoft.Dafny
         ResolveExpression(e.E, new ResolveOpts(opts.codeContext, false, opts.isReveal, opts.isPostCondition, true));
         expr.Type = e.E.Type;
 
+      } else if (expr is BeforeExpr) {
+        BeforeExpr e = (BeforeExpr)expr;
+        ResolveExpression(e.E, new ResolveOpts(opts.codeContext, false, opts.isReveal, opts.isPostCondition, false));
+        expr.Type = e.E.Type;
+
       } else if (expr is UnchangedExpr) {
         var e = (UnchangedExpr)expr;
         if (!opts.twoState) {
@@ -14073,6 +14094,10 @@ namespace Microsoft.Dafny
         reporter.Error(MessageSource.Resolver, expr, "old expressions are allowed only in specification and ghost contexts");
         return;
 
+      } else if (expr is BeforeExpr) {
+        reporter.Error(MessageSource.Resolver, expr, "before expressions are allowed only in specification and ghost contexts");
+        return;
+
       } else if (expr is UnaryOpExpr) {
         var e = (UnaryOpExpr)expr;
         if (e.Op == UnaryOpExpr.Opcode.Fresh) {
@@ -15211,7 +15236,7 @@ namespace Microsoft.Dafny
       } else if (expr is ApplyExpr) {
         ApplyExpr e = (ApplyExpr)expr;
         return UsesSpecFeatures(e.Function) || e.Args.Exists(UsesSpecFeatures);
-      } else if (expr is OldExpr || expr is UnchangedExpr) {
+      } else if (expr is OldExpr || expr is UnchangedExpr || expr is BeforeExpr) {
         return true;
       } else if (expr is UnaryExpr) {
         var e = (UnaryExpr)expr;
@@ -15547,6 +15572,10 @@ namespace Microsoft.Dafny
       } else if (expr is OldExpr) {
         var e = (OldExpr)expr;
         // here, "coContext" is passed along (the use of "old" says this must be ghost code, so the compiler does not need to handle this case)
+        CheckCoCalls(e.E, destructionLevel, coContext, coCandidates);
+        return;
+      } else if (expr is BeforeExpr) {
+        var e = (BeforeExpr)expr;
         CheckCoCalls(e.E, destructionLevel, coContext, coCandidates);
         return;
       } else if (expr is LetExpr) {

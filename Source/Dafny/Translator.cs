@@ -9896,7 +9896,7 @@ namespace Microsoft.Dafny {
           ExpectStmt s = (ExpectStmt)stmt;
           stmtContext = StmtType.ASSUME;
           TrStmt_CheckWellformed(s.Expr, builder, locals, etran, false);
-          
+
           // Need to check the message is well-formed, assuming the expected expression
           // does NOT hold:
           //
@@ -11585,7 +11585,20 @@ namespace Microsoft.Dafny {
       }
       Bpl.StmtList body = loopBodyBuilder.Collect(s.Tok);
 
-      builder.Add(new Bpl.WhileCmd(s.Tok, Bpl.Expr.True, invariants, body));
+      var req = new List<Requires>();
+      var ens = new List<Ensures>();
+
+      if (s is WhileStmt) {
+        var ws = (WhileStmt)s;
+        foreach (var r in ws.Requires) {
+          req.Add(Requires(r.E.tok, false, etran.TrExpr(r.E), null, null));
+        }
+        foreach (var e in ws.Ensures) {
+          AddEnsures(ens, Ensures(e.E.tok, false, etran.TrExpr(e.E), null, null));
+        }
+      }
+
+      builder.Add(new Bpl.WhileCmd(s.Tok, Bpl.Expr.True, invariants, body, req, ens));
     }
 
     void TrAlternatives(List<GuardedAlternative> alternatives, Bpl.Cmd elseCase0, Bpl.StructuredCmd elseCase1,
@@ -14766,6 +14779,10 @@ namespace Microsoft.Dafny {
         } else if (expr is OldExpr) {
           var e = (OldExpr)expr;
           return e.AtLabel == null ? Old.TrExpr(e.E) : OldAt(e.AtLabel).TrExpr(e.E);
+
+        } else if (expr is BeforeExpr) {
+          var e = (BeforeExpr)expr;
+          return new Bpl.BeforeExpr(expr.tok, Old.TrExpr(e.E));
 
         } else if (expr is UnchangedExpr) {
           var e = (UnchangedExpr)expr;
@@ -18305,7 +18322,7 @@ namespace Microsoft.Dafny {
           r = new AlternativeStmt(s.Tok, s.EndTok, s.Alternatives.ConvertAll(SubstGuardedAlternative), s.UsesOptionalBraces);
         } else if (stmt is WhileStmt) {
           var s = (WhileStmt)stmt;
-          r = new WhileStmt(s.Tok, s.EndTok, Substitute(s.Guard), s.Invariants.ConvertAll(SubstMayBeFreeExpr), SubstSpecExpr(s.Decreases), SubstSpecFrameExpr(s.Mod), SubstBlockStmt(s.Body));
+          r = new WhileStmt(s.Tok, s.EndTok, Substitute(s.Guard), s.Invariants.ConvertAll(SubstMayBeFreeExpr), SubstSpecExpr(s.Decreases), SubstSpecFrameExpr(s.Mod), SubstBlockStmt(s.Body), s.Requires.ConvertAll(SubstMayBeFreeExpr), s.Ensures.ConvertAll(SubstMayBeFreeExpr));
         } else if (stmt is AlternativeLoopStmt) {
           var s = (AlternativeLoopStmt)stmt;
           r = new AlternativeLoopStmt(s.Tok, s.EndTok, s.Invariants.ConvertAll(SubstMayBeFreeExpr), SubstSpecExpr(s.Decreases), SubstSpecFrameExpr(s.Mod), s.Alternatives.ConvertAll(SubstGuardedAlternative), s.UsesOptionalBraces);
