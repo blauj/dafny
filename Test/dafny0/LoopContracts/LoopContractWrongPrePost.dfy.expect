@@ -1,0 +1,38 @@
+LoopContractWrongPrePost.dfy(17,0): Error BP5003: A postcondition might not hold on this return path.
+LoopContractWrongPrePost.dfy(16,14): Related location: This is the postcondition that might not hold.
+Execution trace:
+    (0,0): anon0
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopOld
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopUse
+    (0,0): anon9
+LoopContractWrongPrePost.dfy(21,17): Error BP5006: This loop precondition might not hold on entry.
+Execution trace:
+    (0,0): anon0
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopOld
+LoopContractWrongPrePost.dfy(21,17): Error BP5006: This loop precondition might not be maintained by the loop.
+Execution trace:
+    (0,0): anon0
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopOld
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopStep_1_BeforeBody
+    LoopContractWrongPrePost.dfy(20,5): anon11_Else
+    LoopContractWrongPrePost.dfy(20,5): anon12_Else
+    (0,0): anon13_Then
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopStep_2_AfterBody
+LoopContractWrongPrePost.dfy(22,18): Error BP5006: This loop postcondition might not hold on exit.
+Execution trace:
+    (0,0): anon0
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopOld
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopStep_1_BeforeBody
+    LoopContractWrongPrePost.dfy(20,5): anon11_Else
+    (0,0): anon12_Then
+LoopContractWrongPrePost.dfy(22,18): Error BP5006: This loop postcondition might not hold on exit.
+Execution trace:
+    (0,0): anon0
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopOld
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopStep_1_BeforeBody
+    LoopContractWrongPrePost.dfy(20,5): anon11_Else
+    LoopContractWrongPrePost.dfy(20,5): anon12_Else
+    (0,0): anon13_Else
+    LoopContractWrongPrePost.dfy(20,5): anon10_LoopStep_2_AfterBody
+
+Dafny program verifier finished with 2 verified, 5 errors

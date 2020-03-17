@@ -1,0 +1,4 @@
+LoopContractBefore.dfy(7,17): Error: before can only be used in loop specifications
+LoopContractBefore.dfy(11,7): Error: before can only be used in loop specifications
+LoopContractBefore.dfy(18,17): Error: before can only be used in loop specifications
+3 resolution/type errors detected in LoopContractBefore.dfy
