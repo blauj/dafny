@@ -9514,9 +9514,11 @@ namespace Microsoft.Dafny
       Contract.Requires(modifies != null);
       Contract.Requires(codeContext != null);
 
+      var opts = new ResolveOpts(codeContext, true, true);
+
       foreach (MaybeFreeExpression inv in invariants) {
         ResolveAttributes(inv.Attributes, null, new ResolveOpts(codeContext, true));
-        ResolveExpression(inv.E, new ResolveOpts(codeContext, true));
+        ResolveExpression(inv.E, opts);
         Contract.Assert(inv.E.Type != null);  // follows from postcondition of ResolveExpression
         if (fvs != null) {
           Translator.ComputeFreeVariables(inv.E, fvs, ref usesHeap);
@@ -9526,7 +9528,7 @@ namespace Microsoft.Dafny
       if (requires != null) {
         foreach (MaybeFreeExpression e in requires) {
           Expression r = e.E;
-          ResolveExpression(r, new ResolveOpts(codeContext, false));
+          ResolveExpression(r, opts);
           Contract.Assert(r.Type != null);
           ConstrainTypeExprBool(r, "precondition is expected to be of type bool, but is {0}");
         }
@@ -9534,7 +9536,7 @@ namespace Microsoft.Dafny
       if (ensures != null) {
         foreach (MaybeFreeExpression e in ensures) {
           Expression r = e.E;
-          ResolveExpression(r, new ResolveOpts(codeContext, false));
+          ResolveExpression(r, opts);
           Contract.Assert(r.Type != null);
           ConstrainTypeExprBool(r, "postcondition is expected to be of type bool, but is {0}");
         }
@@ -11628,6 +11630,7 @@ namespace Microsoft.Dafny
       public readonly bool isReveal;
       public readonly bool isPostCondition;
       public readonly bool InsideOld;
+      public readonly bool IsLoopSpec;
 
       public ResolveOpts(ICodeContext codeContext, bool twoState) {
         Contract.Requires(codeContext != null);
@@ -11635,6 +11638,11 @@ namespace Microsoft.Dafny
         this.twoState = twoState;
         this.isReveal = false;
         this.isPostCondition = false;
+      }
+
+      public ResolveOpts(ICodeContext codeContext, bool twoState, bool isLoopSpec)
+        : this (codeContext, twoState) {
+        this.IsLoopSpec = isLoopSpec;
       }
 
       public ResolveOpts(ICodeContext codeContext, bool twoState, bool isReveal, bool isPostCondition, bool insideOld) {
@@ -11989,7 +11997,13 @@ namespace Microsoft.Dafny
 
       } else if (expr is BeforeExpr) {
         BeforeExpr e = (BeforeExpr)expr;
-        ResolveExpression(e.E, new ResolveOpts(opts.codeContext, false, opts.isReveal, opts.isPostCondition, false));
+        if (!opts.twoState) {
+          reporter.Error(MessageSource.Resolver, expr, "before expressions are not allowed in this context");
+        }
+        if(!opts.IsLoopSpec) {
+          reporter.Error(MessageSource.Resolver, expr, "before can only be used in loop specifications");
+        }
+        ResolveExpression(e.E, opts);
         expr.Type = e.E.Type;
 
       } else if (expr is UnchangedExpr) {
